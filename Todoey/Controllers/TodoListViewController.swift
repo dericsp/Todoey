@@ -8,11 +8,15 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
-class TodoListViewController: UITableViewController {
+class TodoListViewController: SwipeTableViewController, UITextFieldDelegate {
+    
+    weak var actionToEnable : UIAlertAction?
     
     var itemArray: Results<Item>?
     
+    @IBOutlet weak var searchBar: UISearchBar!
     let realm = try! Realm()
     
     var selectecCategory : Category? {
@@ -24,8 +28,39 @@ class TodoListViewController: UITableViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        guard let colourHex = selectecCategory?.color else {fatalError()}
         
-//        self.loadItems()
+        title = selectecCategory!.name
+        
+        updateNavBar(whitHexCode: colourHex)
+        
+    }
+    
+    
+    override func viewWillDisappear(_ animated: Bool) {
+       
+        updateNavBar(whitHexCode: "1D9BF6")
+        
+    }
+    
+    func updateNavBar(whitHexCode colourHexCode : String) {
+        
+        guard let navbar = navigationController?.navigationBar else {fatalError("Navigation controller does not exist")}
+        
+        guard let navBarColour = UIColor(hexString: colourHexCode) else {fatalError()}
+        
+        navbar.barTintColor = navBarColour
+        
+        navbar.tintColor = ContrastColorOf(navBarColour, returnFlat: true)
+        
+        navbar.largeTitleTextAttributes = [NSAttributedStringKey.foregroundColor: ContrastColorOf(navBarColour, returnFlat: true)]
+        
+        searchBar.barTintColor = navBarColour
+        
     }
 
     //MARK: - Tableview Datasource Methods
@@ -36,7 +71,7 @@ class TodoListViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         if let item = itemArray?[indexPath.row] {
             cell.textLabel?.text = item.title
@@ -44,6 +79,13 @@ class TodoListViewController: UITableViewController {
             //        Ternary operator ==>
             //        value = condition ? valueIfTrue : valueIfFalse
             cell.accessoryType = (item.done) ? .checkmark : .none
+            
+            if let colour = UIColor(hexString: selectecCategory!.color!)?.darken(byPercentage: CGFloat(indexPath.row)/CGFloat(itemArray!.count)) {
+                cell.backgroundColor = colour
+                
+                cell.textLabel?.textColor = ContrastColorOf(colour, returnFlat: true)
+                cell.tintColor = ContrastColorOf(colour, returnFlat: true)
+            }
             
         } else {
             cell.textLabel?.text = "No Items Added"
@@ -74,19 +116,26 @@ class TodoListViewController: UITableViewController {
         tableView.deselectRow(at: indexPath, animated: true)
         
     }
+
+  
  
     //MARK: - Add new items
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         
-        var textField = UITextField()
+        var textFieldEric = UITextField()
+        
+        
         
         let alert = UIAlertController(title: "Add New Todoey Item", message: "", preferredStyle: .alert)
         
-        let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
-//            What will happen once the user clicks add item button on our uialert
+        let action = UIAlertAction(title: "Add Item", style: .default) { (action1) in
+          
             
-            if let text = textField.text {
+            if let text = textFieldEric.text {
+
+                action1.isEnabled = true
                 if let currentCategory = self.selectecCategory {
+                    
                     do{
                         try self.realm.write {
                             let newItem = Item()
@@ -104,12 +153,35 @@ class TodoListViewController: UITableViewController {
         
         alert.addTextField { (alertTextField) in
             alertTextField.placeholder = "Create new item"
-            textField = alertTextField
+            textFieldEric = alertTextField
+            
+            textFieldEric.addTarget(self, action: #selector(self.textFieldDidChange(_:)),
+                                    for: .editingChanged)
+            action.isEnabled = false
+ 
+        }
+        
+        self.actionToEnable = action
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: UIAlertActionStyle.cancel) { (cancel) in
+            print("Cancelada a ação")
         }
         
         alert.addAction(action)
+        alert.addAction(cancelAction)
         
         present(alert, animated: true, completion: nil)
+
+    }
+    
+    @objc func textFieldDidChange(_ textField: UITextField) {
+        if textField.text!.count > 0 {
+            actionToEnable?.isEnabled = true
+//            print("alterou")
+        }else {
+            actionToEnable?.isEnabled = false
+//            print("nada")
+        }
     }
     
 
@@ -121,6 +193,22 @@ class TodoListViewController: UITableViewController {
         tableView.reloadData()
 
     }
+    
+    override func updateModel(at indexPath: IndexPath) {
+        if let todoForDeletion = self.itemArray?[indexPath.row] {
+            do{
+                try self.realm.write {
+                    self.realm.delete(todoForDeletion)
+                }
+            }catch {
+                print("Error trying to delete todo \(error)")
+            }
+        }
+    }
+    
+    
+
+    
 }
 
 //MARK: - Search bar methods
@@ -144,5 +232,5 @@ extension TodoListViewController: UISearchBarDelegate {
 
         }
     }
-}
 
+}

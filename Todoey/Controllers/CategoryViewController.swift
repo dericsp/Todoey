@@ -8,8 +8,11 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
-class CategoryViewController: UITableViewController {
+class CategoryViewController: SwipeTableViewController {
+    
+    weak var alertEnable : UIAlertAction?
     
     let realm = try! Realm()
     
@@ -29,12 +32,19 @@ class CategoryViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
         
-        let category = categories?[indexPath.row]
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
-        cell.textLabel?.text = category?.name ?? "No categories added yet"
+        if let category = categories?[indexPath.row]{
         
+            cell.textLabel?.text = category.name ?? "No categories added yet"
+            
+            guard let categoryColor = UIColor(hexString: category.color!) else {fatalError()}
+            
+            cell.backgroundColor = categoryColor
+            
+            cell.textLabel?.textColor = ContrastColorOf(categoryColor, returnFlat: true)
+        }
         return cell
     }
 
@@ -46,11 +56,16 @@ class CategoryViewController: UITableViewController {
         
         let alert = UIAlertController(title: "Add New Category", message: " ", preferredStyle: .alert)
         
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { (cancelAction) in
+            
+        }
+        
         let action = UIAlertAction(title: "Add category", style: .default) { (action) in
             
             if let textD = textFieldCat.text {
                 let newCat = Category()
                 newCat.name = textD
+                newCat.color = UIColor.randomFlat.hexValue()
                 self.save(category: newCat)
             }
             
@@ -59,16 +74,27 @@ class CategoryViewController: UITableViewController {
         alert.addTextField { (alertTextFieldCat) in
             alertTextFieldCat.placeholder = "Create new Category"
             textFieldCat = alertTextFieldCat
+            textFieldCat.addTarget(self, action: #selector(self.textFieldDidChange(_:)), for: .editingChanged)
+            action.isEnabled = false
         }
         
         alert.addAction(action)
+        alert.addAction(cancelAction)
+        alertEnable = action
         
         present(alert, animated: true, completion: nil)
         
     }
     
-    
-    
+    @objc func textFieldDidChange(_ textField: UITextField) {
+        if textField.text!.count > 0 {
+            alertEnable?.isEnabled = true
+//            print("alterou")
+        }else {
+            alertEnable?.isEnabled = false
+//            print("nada")
+        }
+    }
     
     
     //    MARK: - TableView Delegate Methods
@@ -109,4 +135,50 @@ class CategoryViewController: UITableViewController {
         tableView.reloadData()
     }
     
+    //    MARK: - Delete data from swipe
+    
+    override func updateModel(at indexPath: IndexPath) {
+        if let categoryForDeletion = self.categories?[indexPath.row] {
+            if categoryForDeletion.items.count > 0 {
+                
+//                func deleteAll() {
+                    do {
+                        try self.realm.write {
+                            self.realm.delete(categoryForDeletion.items)
+                        }
+                    }catch {
+                        print(error)
+                    }
+                    
+                    do {
+                        try self.realm.write {
+                            
+                            self.realm.delete(categoryForDeletion)
+                        }
+                        
+                    }catch {
+                        print("Error while deleting category \(error)")
+                    }
+//                }
+                
+
+            }else {
+                do {
+                    try self.realm.write {
+                    
+                        self.realm.delete(categoryForDeletion)
+                    }
+                
+                }catch {
+                    print("Error while deleting category \(error)")
+                }
+            
+            }
+        
+        }
+        
+    }
+    
 }
+
+
