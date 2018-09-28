@@ -14,37 +14,54 @@ class CategoryViewController: SwipeTableViewController {
     
     weak var alertEnable : UIAlertAction?
     
+    var numberOfRows : Int!
+    
     let realm = try! Realm()
     
     var categories: Results<Category>?
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        loadCategories()
-        
+            loadCategories()
     }
     
     //    MARK: - TableView Datasource Methods
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return categories?.count ?? 1
+       
+        if !(realm.objects(Category.self).count == 0){
+        numberOfRows = realm.objects(Category.self).count
+        }
+//        print("numberCategory \(numberOfRows)")
+            return numberOfRows
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         let cell = super.tableView(tableView, cellForRowAt: indexPath)
+
+        if !(categories?.count == Optional(0)) {
+            
+            if let category = categories?[indexPath.row]{
+                
+//                print("cellForRowAtCategory category")
+            
+                cell.textLabel?.text = category.name ?? "No categories added yet"
+                
+                guard let categoryColor = UIColor(hexString: category.color!) else {fatalError()}
+                
+                cell.backgroundColor = categoryColor
+                
+                cell.textLabel?.textColor = ContrastColorOf(categoryColor, returnFlat: true)
+            }
         
-        if let category = categories?[indexPath.row]{
-        
-            cell.textLabel?.text = category.name ?? "No categories added yet"
-            
-            guard let categoryColor = UIColor(hexString: category.color!) else {fatalError()}
-            
-            cell.backgroundColor = categoryColor
-            
-            cell.textLabel?.textColor = ContrastColorOf(categoryColor, returnFlat: true)
+        }else {
+            cell.backgroundColor = .white
+            cell.textLabel?.textColor = ContrastColorOf(FlatWhite(), returnFlat: true)
+            cell.textLabel?.text = "No categories added yet"
+
         }
+        
         return cell
     }
 
@@ -100,8 +117,14 @@ class CategoryViewController: SwipeTableViewController {
     //    MARK: - TableView Delegate Methods
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        performSegue(withIdentifier: "goToItems", sender: self)
         
+        if !(realm.objects(Category.self).count == Optional(0)){
+
+        performSegue(withIdentifier: "goToItems", sender: self)
+        }else {
+            tableView.deselectRow(at: indexPath, animated: false)
+//            print("nothing")
+        }
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
@@ -117,7 +140,6 @@ class CategoryViewController: SwipeTableViewController {
     
     func save(category: Category) {
         
-        
         do {
             try realm.write {
              realm.add(category)
@@ -125,26 +147,38 @@ class CategoryViewController: SwipeTableViewController {
         }catch {
             print("Error saving context \(error)")
         }
+        
         tableView.reloadData()
+        
     }
     
     func loadCategories()  {
-        
         categories = realm.objects(Category.self)
+
+        if (realm.objects(Category.self).count == 0) {
+            numberOfRows = 1
+
+        } else {
+
+            numberOfRows = realm.objects(Category.self).count
+            
+        }
         
         tableView.reloadData()
     }
+    
+
     
     //    MARK: - Delete data from swipe
     
     override func updateModel(at indexPath: IndexPath) {
+      
         if let categoryForDeletion = self.categories?[indexPath.row] {
             if categoryForDeletion.items.count > 0 {
-                
-//                func deleteAll() {
+     
                     do {
                         try self.realm.write {
-                            self.realm.delete(categoryForDeletion.items)
+                            self.realm.delete((categories?[indexPath.row].items)!)
                         }
                     }catch {
                         print(error)
@@ -153,14 +187,12 @@ class CategoryViewController: SwipeTableViewController {
                     do {
                         try self.realm.write {
                             
-                            self.realm.delete(categoryForDeletion)
+                            self.realm.delete((categories?[indexPath.row])!)
                         }
                         
                     }catch {
                         print("Error while deleting category \(error)")
                     }
-//                }
-                
 
             }else {
                 do {
@@ -174,6 +206,7 @@ class CategoryViewController: SwipeTableViewController {
                 }
             
             }
+            tableView.reloadData()
         
         }
         

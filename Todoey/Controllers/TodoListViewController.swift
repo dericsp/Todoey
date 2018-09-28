@@ -57,7 +57,7 @@ class TodoListViewController: SwipeTableViewController, UITextFieldDelegate {
         
         navbar.tintColor = ContrastColorOf(navBarColour, returnFlat: true)
         
-        navbar.largeTitleTextAttributes = [NSAttributedStringKey.foregroundColor: ContrastColorOf(navBarColour, returnFlat: true)]
+        navbar.largeTitleTextAttributes = [NSAttributedString.Key.foregroundColor: ContrastColorOf(navBarColour, returnFlat: true)]
         
         searchBar.barTintColor = navBarColour
         
@@ -74,7 +74,7 @@ class TodoListViewController: SwipeTableViewController, UITextFieldDelegate {
         let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         if let item = itemArray?[indexPath.row] {
-            cell.textLabel?.text = item.title
+            cell.textLabel?.text = item.title 
             
             //        Ternary operator ==>
             //        value = condition ? valueIfTrue : valueIfFalse
@@ -163,7 +163,7 @@ class TodoListViewController: SwipeTableViewController, UITextFieldDelegate {
         
         self.actionToEnable = action
         
-        let cancelAction = UIAlertAction(title: "Cancel", style: UIAlertActionStyle.cancel) { (cancel) in
+        let cancelAction = UIAlertAction(title: "Cancel", style: UIAlertAction.Style.cancel) { (cancel) in
             print("Cancelada a ação")
         }
         
